@@ -111,23 +111,21 @@ def run_workflow(usr_inp):
     return final_state
 
 
-# Test 1: Greeting
-print("\n Test 1: Greeting")
-run_workflow("Hello!")
+# # Test 1: Greeting
+# print("\n Test 1: Greeting")
+# run_workflow("Hello!")
 
-# Test 2: Weather query
-print("\n Test 2: Weather Query")
-run_workflow("What's the weather like?")
+# # Test 2: Weather query
+# print("\n Test 2: Weather Query")
+# run_workflow("What's the weather like?")
 
-# Test 3: General query
-print("\n Test 3: General Query")
-run_workflow("Tell me about LangGraph")
+# # Test 3: General query
+# print("\n Test 3: General Query")
+# run_workflow("Tell me about LangGraph")
 
 
-# from IPython.display import Image, display
-# display(
-#     Image(
-#         app.get_graph()
-#         .draw_mermaid_png()
-#     )
-# )
+from IPython.display import Image, display
+linear_workflow_diagram = Image(
+        app.get_graph()
+        .draw_mermaid_png()
+    )

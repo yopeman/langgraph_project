@@ -223,34 +223,42 @@ def run_workflow(user_input: str):
     return final_state
 
 
-print("\n" + "=" * 70)
-print("DEMO: Testing LLM-Powered Conditional Routing")
-print("=" * 70)
+# print("\n" + "=" * 70)
+# print("DEMO: Testing LLM-Powered Conditional Routing")
+# print("=" * 70)
 
-# Test 1: Simple greeting
-print("\n Test 1: Simple Greeting")
-run_workflow("Hey there! How's it going?")
+# # Test 1: Simple greeting
+# print("\n Test 1: Simple Greeting")
+# run_workflow("Hey there! How's it going?")
 
-# Test 2: Technical question
-print("\n Test 2: Technical Question")
-run_workflow("What is LangGraph and how does it differ from LangChain?")
+# # Test 2: Technical question
+# print("\n Test 2: Technical Question")
+# run_workflow("What is LangGraph and how does it differ from LangChain?")
 
-# Test 3: Action command
-print("\n Test 3: Action Command")
-run_workflow("Can you create a summary of the latest AI research papers?")
+# # Test 3: Action command
+# print("\n Test 3: Action Command")
+# run_workflow("Can you create a summary of the latest AI research papers?")
 
-# Test 4: User feedback
-print("\n Test 4: User Feedback")
-run_workflow("This tool is amazing! The responses are really helpful.")
+# # Test 4: User feedback
+# print("\n Test 4: User Feedback")
+# run_workflow("This tool is amazing! The responses are really helpful.")
 
-# Test 5: Complex question
-print("\n Test 5: Complex Question")
-run_workflow("How do conditional edges improve workflow efficiency compared to linear flows?")
+# # Test 5: Complex question
+# print("\n Test 5: Complex Question")
+# run_workflow("How do conditional edges improve workflow efficiency compared to linear flows?")
 
-# Test 6: Ambiguous input
-print("\n Test 6: Ambiguous Input")
-run_workflow("hmm...I see ")
+# # Test 6: Ambiguous input
+# print("\n Test 6: Ambiguous Input")
+# run_workflow("hmm...I see ")
 
-# Test 7: Multi-intent input (tests LLM classification)
-print("\n Test 7: Mixed Intent")
-run_workflow("Hi! Can you explain how neural networks work?")
+# # Test 7: Multi-intent input (tests LLM classification)
+# print("\n Test 7: Mixed Intent")
+# run_workflow("Hi! Can you explain how neural networks work?")
+
+
+
+from IPython.display import Image, display
+conditional_workflow_diagram = Image(
+        app.get_graph()
+        .draw_mermaid_png()
+    )
