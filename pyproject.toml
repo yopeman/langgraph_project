@@ -1,0 +1,12 @@
+[project]
+name = "lang_graph_tutorial"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "ipython>=9.10.0",
+    "langchain-core>=1.2.7",
+    "langchain-ollama>=1.0.1",
+    "langgraph>=1.0.7",
+]
