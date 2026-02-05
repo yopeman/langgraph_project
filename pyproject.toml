@@ -5,9 +5,19 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "ddgs>=9.10.0",
+    "duckduckgo-search>=8.1.1",
+    "faiss-cpu>=1.13.2",
     "ipython>=9.10.0",
+    "langchain>=1.2.8",
+    "langchain-community>=0.4.1",
     "langchain-core>=1.2.7",
     "langchain-ollama>=1.0.1",
+    "langchain-text-splitters>=1.1.0",
     "langgraph>=1.0.7",
+    "markdown>=3.10.1",
     "pillow>=12.1.0",
+    "pypdf>=6.6.2",
+    "tkhtmlview>=0.1.1.post1",
+    "wikipedia>=1.4.0",
 ]

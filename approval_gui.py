@@ -1,0 +1,133 @@
+import tkinter as tk
+from tkinter import messagebox
+from tkhtmlview import HTMLLabel
+import markdown
+from langchain_ollama import ChatOllama
+
+
+llm = ChatOllama(model='smollm2:135m')
+
+class ApprovalGUI:
+    def __init__(self, topic, content, section = None):
+        title = "Section Approval" if section else "Final Approval"
+        self.root = tk.Tk()
+        self.root.title(title)
+        # root.geometry("520x450")
+        self.topic = topic
+        self.section = section
+        self.content = content
+
+        container = tk.Frame(self.root, padx=15, pady=15)
+        container.pack(fill="both", expand=True)
+
+        topic_label = tk.Label(
+            container,
+            text=f"📝 Topic: {topic} ({title})",
+            font=("Arial", 16, "bold")
+        )
+        topic_label.pack(anchor="w", pady=(0, 10))
+
+        if section:
+            section_label = tk.Label(
+                container,
+                text=f"✍️ Section: {section}",
+                font=("Arial", 14, "bold")
+            )
+            section_label.pack(anchor="w", pady=(0, 10))
+
+        markdown_text = f"{self.content}"
+
+        html_content = markdown.markdown(markdown_text)
+
+        self.html_label = HTMLLabel(
+            container,
+            html=html_content,
+            width=60
+        )
+        self.html_label.pack(fill="x", pady=(0, 12))
+
+        self.text_area = tk.Text(container, height=8)
+        self.text_area.pack(fill="both", expand=True, pady=(0, 12))
+
+        button_frame = tk.Frame(container)
+        button_frame.pack(fill="x")
+
+        approve_button = tk.Button(
+            button_frame,
+            text="Approve",
+            command=self.approve_action,
+            width=12
+        )
+        approve_button.pack(side="left", padx=(0, 10))
+
+        improve_button = tk.Button(
+            button_frame,
+            text="Improve",
+            command=self.improve_action,
+            width=12
+        )
+        improve_button.pack(side="left")
+
+    def approve_action(self):
+        messagebox.showinfo("Approved", f"Approved: \n\n{self.content[:250]}...")
+        self.root.destroy()
+
+    def improve_action(self):
+        feedback = self.text_area.get("1.0", tk.END).strip()
+        messagebox.showinfo("Improve", f"Content improving based on feedback: \n\n{feedback}")
+        response = llm.invoke(f"""
+            You are expert content generator.
+            for the following topic, section and content, 
+            improve the content based on user feedback
+            TOPIC: "{self.topic}" {f'\nSECTION: "{self.section}"' if self.section else ''}
+            CONTENT: "{self.content}"
+            FEEDBACK: "{feedback}
+        """.strip())
+        self.content = response.content
+        self.update_content_label()
+        self.text_area.delete("1.0", tk.END)
+        messagebox.showinfo("Improve", f"Content improved!")
+
+    def update_content_label(self):
+        html_content = markdown.markdown(self.content)
+        self.html_label.set_html(html_content)
+
+    def run(self):
+        self.root.mainloop()
+
+
+
+
+
+
+
+
+
+
+
+# gui = ApprovalGUI('Yope Man', """
+# ### LangChain
+
+# **LangChain** is a framework designed to facilitate the development of applications that utilize language models (LLMs). It provides a variety of tools and components to streamline building applications that integrate with language models efficiently. Key features include:
+
+# - **Modularity**: Allows developers to combine different components, such as prompt templates, output parsers, and chains, to create complex workflows.
+# - **Connectors**: Supports integration with various APIs, databases, and other systems, enabling seamless data flow and functionality enhancement.
+# - **Chain Management**: Enables the creation of multi-step workflows, where the output of one step can be the input for another.
+# - **Agent Support**: Offers mechanisms for creating agents that can make decisions based on user input and model feedback.
+
+# ### LangGraph
+
+# **LangGraph** is a related concept that focuses on visualizing and managing the relationships and flows between different components in applications that utilize language models. It often emphasizes:
+
+# - **Visualization**: Provides graphical representations of how different elements, such as prompts and models, interact with each other.
+# - **Workflow Optimization**: Facilitates identifying bottlenecks or inefficiencies in the process, allowing for streamlined execution.
+# - **Documentation**: Assists in understanding and documenting complex relationships within an application, making it easier for teams to collaborate.
+
+# ### Summary
+
+# Together, LangChain and LangGraph provide powerful tools for developers building applications around language models, enhancing both functionality and the user experience through modular design and visual management.
+# """, "Greeting")
+
+# # print('ccccccccccc')
+# # gui.run()
+# # print(gui.content)
