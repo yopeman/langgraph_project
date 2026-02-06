@@ -6,7 +6,9 @@ from langchain_community.tools import WikipediaQueryRun, DuckDuckGoSearchRun
 from langchain_community.utilities import WikipediaAPIWrapper
 from approval_gui import ApprovalGUI
 from langgraph.graph import StateGraph, START, END
-from config import llm
+from langgraph.types import interrupt, Command
+from langgraph.checkpoint.memory import MemorySaver
+from config import llm, config
 
 wkp_search = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
 ddg_search = DuckDuckGoSearchRun()
@@ -19,7 +21,6 @@ class SectionState(TypedDict):
 
 class NoteState(TypedDict):
     topic: str
-    sections: List[str]
     sections_content: List[SectionState]
     current_section_index: int
     draft_note: str
@@ -38,7 +39,6 @@ def planning_node(state: NoteState) -> NoteState:
         tell me list of ideas of to create best content on the following topic
         TOPIC: "{topic}"
     """.strip())
-    state['sections'] = response.sections
 
     for section in response.sections:
         state['sections_content'].append(
@@ -54,7 +54,7 @@ def planning_node(state: NoteState) -> NoteState:
 
 def is_final_loop(state: NoteState) -> Literal['final_loop', 'not_final_loop']:
     print("\nIS FINAL LOOP NODE:", end='')
-    total_section = len(state['sections'])
+    total_section = len(state['sections_content'])
     current_section_index = state['current_section_index']
 
     print('pass')
@@ -69,7 +69,7 @@ class IsSearchNeedDecisionResponse(BaseModel):
 def is_search_need(state: NoteState) -> Literal['need_search', 'not_need_search']:
     print("IS SEARCH NEED NODE:", end='')
     topic = state['topic']
-    section = state['sections'][state['current_section_index']]
+    section = state['sections_content'][state['current_section_index']]['title']
     structured_llm = llm.with_structured_output(IsSearchNeedDecisionResponse)
     decision: IsSearchNeedDecisionResponse = structured_llm.invoke(f"""
         You are expert content generator.
@@ -90,7 +90,7 @@ class SearchTypeDecisionResponse(BaseModel):
 def decide_search_type(state: NoteState) -> Literal['duck_duck_go', 'wikipedia', 'both']:
     print("DECIDE SEARCH TYPE NODE:", end='')
     topic = state['topic']
-    section = state['sections'][state['current_section_index']]
+    section = state['sections_content'][state['current_section_index']]['title']
     structured_llm = llm.with_structured_output(SearchTypeDecisionResponse)
     decision: SearchTypeDecisionResponse = structured_llm.invoke(f"""
         You are expert content generator.
@@ -104,7 +104,7 @@ def decide_search_type(state: NoteState) -> Literal['duck_duck_go', 'wikipedia',
 def duck_duck_go_search_node(state: NoteState) -> NoteState:
     print("DUCK DUCK GO SEARCH NODE:", end='')
     topic = state['topic']
-    section = state['sections'][state['current_section_index']]
+    section = state['sections_content'][state['current_section_index']]['title']
     response = llm.invoke(f"""
         You are expert content generator.
         for the following topic and section, 
@@ -121,7 +121,7 @@ def duck_duck_go_search_node(state: NoteState) -> NoteState:
 def wikipedia_search_node(state: NoteState) -> NoteState:
     print("WIKIPEDIA SEARCH NODE:", end='')
     topic = state['topic']
-    section = state['sections'][state['current_section_index']]
+    section = state['sections_content'][state['current_section_index']]['title']
     response = llm.invoke(f"""
         You are expert content generator.
         for the following topic and section, 
@@ -142,7 +142,7 @@ class SearchQueryResponse(BaseModel):
 def both_search_node(state: NoteState) -> NoteState:
     print("BOTH SEARCH NODE:", end='')
     topic = state['topic']
-    section = state['sections'][state['current_section_index']]
+    section = state['sections_content'][state['current_section_index']]['title']
     structured_llm = llm.with_structured_output(SearchQueryResponse)
     queries: SearchQueryResponse = structured_llm.invoke(f"""
         You are expert content generator.
@@ -161,7 +161,7 @@ def both_search_node(state: NoteState) -> NoteState:
 def background_idea_generator_node(state: NoteState) -> NoteState:
     print("BACKGROUND IDEA NODE:", end='')
     topic = state['topic']
-    section = state['sections'][state['current_section_index']]
+    section = state['sections_content'][state['current_section_index']]['title']
     response = llm.invoke(f"""
         You are expert content generator.
         for the following topic and section, 
@@ -176,7 +176,7 @@ def background_idea_generator_node(state: NoteState) -> NoteState:
 def draft_content_generator_node(state: NoteState) -> NoteState:
     print("DRAFT CONTENT GENERATOR NODE:", end='')
     topic = state['topic']
-    section = state['sections'][state['current_section_index']]
+    section = state['sections_content'][state['current_section_index']]['title']
     raw_content = state['sections_content'][state['current_section_index']]['raw_content']
     response = llm.invoke(f"""
         You are expert content generator.
@@ -192,13 +192,8 @@ def draft_content_generator_node(state: NoteState) -> NoteState:
     
 def section_human_approval_node(state: NoteState) -> NoteState:
     print("SECTION HUMAN APPROVAL NODE:", end='')
-    topic = state['topic']
-    section = state['sections'][state['current_section_index']]
-    draft_content = state['sections_content'][state['current_section_index']]['draft_content']
-    final_content = draft_content
-    approval_gui = ApprovalGUI(topic=topic, content=draft_content, section=section)
-    approval_gui.run()
-    final_content = approval_gui.content
+    section = state['sections_content'][state['current_section_index']]
+    final_content = interrupt({'type': 'section_human_approval', 'section': section['title'], 'content': section['draft_content']})
     state['sections_content'][state['current_section_index']]['final_content'] = final_content
     state['current_section_index'] += 1
     print('pass')
@@ -228,12 +223,8 @@ def final_content_generator_node(state: NoteState) -> NoteState:
 
 def final_human_approval_node(state: NoteState) -> NoteState:
     print("FINAL HUMAN APPROVAL NODE:", end='')
-    topic = state['topic']
     draft_note = state['draft_note']
-    final_note = draft_note
-    approval_gui = ApprovalGUI(topic=topic, content=draft_note)
-    approval_gui.run()
-    final_note = approval_gui.content
+    final_note = interrupt({'type': 'final_human_approval', 'content': draft_note})
     state['final_note'] = final_note
     print('pass')
     return state
@@ -321,19 +312,37 @@ workflow.add_edge(FINAL_CONTENT, FINAL_HUMAN_APPROVAL)
 workflow.add_edge(FINAL_HUMAN_APPROVAL, IMPROVE_MARKDOWN)
 workflow.add_edge(IMPROVE_MARKDOWN, END)
 
-app = workflow.compile()
-
+app = workflow.compile(checkpointer=MemorySaver())
 def run_note_taker(topic:str):
     print("START:pass")
     initial_state = NoteState({
         'topic': topic,
-        'sections': [],
         'sections_content': [],
         'current_section_index': 0,
         'draft_note': '',
         'final_note': ''
     })
-    final_state = app.invoke(initial_state)
+    result = app.invoke(initial_state, config)
+
+    while '__interrupt__' in result:
+        payload = result['__interrupt__'][0].value
+        match payload['type']:
+            case 'section_human_approval':
+                section = payload['section']
+                content = payload['content']
+                gui = ApprovalGUI(topic=topic, section=section, content=content)
+                gui.run()
+                improved_content = gui.content
+            case 'final_human_approval':
+                content = payload['content']
+                gui = ApprovalGUI(topic=topic, content=content)
+                gui.run()
+                improved_content = gui.content
+            case _:
+                raise ValueError(f"Unknown interrupt type: {payload['type']}")
+            
+        result = app.invoke(Command(resume=improved_content), config)
+
     print("END:pass")
-    print(final_state['final_note'])
-    return final_state
+    print(result['final_note'])
+    return result
