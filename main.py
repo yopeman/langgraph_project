@@ -2,7 +2,8 @@ import tkinter as tk
 from PIL import ImageTk, Image
 import io
 from linear_workflow import linear_workflow_diagram
-from conditional_workflow import conditional_workflow_diagram
+# from conditional_workflow import conditional_workflow_diagram
+from note_taker import diagram
 
 root = tk.Tk()
 root.title("Lang Graph")
@@ -23,7 +24,7 @@ label1.grid(row=0, column=0, padx=10, pady=5)
 
 # Convert IPython display Image to PIL Image
 # The diagram is a PNG image in bytes format
-image_bytes2 = conditional_workflow_diagram.data
+image_bytes2 = diagram.data
 pil_image2 = Image.open(io.BytesIO(image_bytes2))
 
 # Convert PIL Image to Tkinter PhotoImage

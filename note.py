@@ -1,7 +1,11 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from datetime import datetime
-from note_taker import app
+from note_taker import app, run_note_taker
+from IPython.display import Image as IP_Image
+from PIL import ImageTk, Image as PIL_Image
+import io
+
 
 class NoteTakerAgentGUI:
     def __init__(self):
@@ -45,6 +49,15 @@ class NoteTakerAgentGUI:
             width=12
         )
         discard_button.pack(side="left")
+
+
+        note_taker_workflow_diagram = IP_Image(app.get_graph().draw_mermaid_png())
+        image_bytes = note_taker_workflow_diagram.data
+        pil_image = PIL_Image.open(io.BytesIO(image_bytes))
+        tk_image = ImageTk.PhotoImage(pil_image)
+        img_label = tk.Label(container, image=tk_image)
+        img_label.pack(anchor='center')
+
         root.mainloop()
 
     def generate_content(self):
@@ -53,7 +66,8 @@ class NoteTakerAgentGUI:
             messagebox.showwarning("Missing Topic", "Please enter a topic name.")
             return
 
-        content = app.invoke({'topic': topic})
+        messagebox.showinfo("Acknowledgement", f"Generating Content: \n\n{topic}")
+        content = run_note_taker(topic)
         self.content = content['final_note']
         messagebox.showinfo("Congratulation", f"Generate: \n\n{self.content[:250]}...")
 

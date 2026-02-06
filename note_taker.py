@@ -9,51 +9,67 @@ from approval_gui import ApprovalGUI
 from langgraph.graph import StateGraph, START, END
 
 llm = ChatOllama(model='smollm2:135m')
+# llm = ChatOllama(model='gemma3:4b') #(model='smollm2:135m')
 wkp_search = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
 ddg_search = DuckDuckGoSearchRun()
 
 class SectionState(TypedDict):
-    title: str = ''
-    raw_content: str = ''
-    draft_content: str = ''
-    final_content: str = ''
+    title: str
+    raw_content: str
+    draft_content: str
+    final_content: str
 
 class NoteState(TypedDict):
     topic: str
-    sections: List[str] = Field(default=list)
-    sections_content: List[SectionState] = Field(default=list)
-    current_section_index: int = 0
-    draft_note: str = ''
-    final_note: str = ''
+    sections: List[str]
+    sections_content: List[SectionState]
+    current_section_index: int
+    draft_note: str
+    final_note: str
 
 
 class PlanResponse(BaseModel):
-    sections: List[str] = Field(description='List of headings')
+    sections: List[str] = Field(description='List of ideas')
 
 def planning_node(state: NoteState) -> NoteState:
+    print("PLANING NODE:", end='')
     topic = state['topic']
     structured_llm = llm.with_structured_output(PlanResponse)
     response: PlanResponse = structured_llm.invoke(f"""
         You are expert content generator.
-        tell me list of headings of to create best content on the following topic
+        tell me list of ideas of to create best content on the following topic
         TOPIC: "{topic}"
     """.strip())
     state['sections'] = response.sections
+
+    for section in response.sections:
+        state['sections_content'].append(
+            SectionState({
+                'title': section,
+                'raw_content': '',
+                'draft_content': '',
+                'final_content': ''
+            })
+        )
+    print('pass')
     return state
 
-def is_final_loop(state: NoteState) -> Literal['final_content', 'section_content']:
+def is_final_loop(state: NoteState) -> Literal['final_loop', 'not_final_loop']:
+    print("\nIS FINAL LOOP NODE:", end='')
     total_section = len(state['sections'])
     current_section_index = state['current_section_index']
 
+    print('pass')
     if current_section_index < total_section - 1:
-        return 'section_content'
+        return 'not_final_loop'
     else:
-        return 'final_content'
+        return 'final_loop'
 
 class IsSearchNeedDecisionResponse(BaseModel):
     is_search_need: bool = Field(description='is searching is necessary')
 
 def is_search_need(state: NoteState) -> Literal['need_search', 'not_need_search']:
+    print("IS SEARCH NEED NODE:", end='')
     topic = state['topic']
     section = state['sections'][state['current_section_index']]
     structured_llm = llm.with_structured_output(IsSearchNeedDecisionResponse)
@@ -64,6 +80,7 @@ def is_search_need(state: NoteState) -> Literal['need_search', 'not_need_search'
         SECTION: "{section}"
     """.strip())
 
+    print('pass')
     if decision.is_search_need:
         return 'need_search'
     else:
@@ -73,6 +90,7 @@ class SearchTypeDecisionResponse(BaseModel):
     search_type: Literal['duck_duck_go', 'wikipedia', 'both'] = Field(description='Best search result')
 
 def decide_search_type(state: NoteState) -> Literal['duck_duck_go', 'wikipedia', 'both']:
+    print("DECIDE SEARCH TYPE NODE:", end='')
     topic = state['topic']
     section = state['sections'][state['current_section_index']]
     structured_llm = llm.with_structured_output(SearchTypeDecisionResponse)
@@ -82,9 +100,11 @@ def decide_search_type(state: NoteState) -> Literal['duck_duck_go', 'wikipedia',
         TOPIC: "{topic}"
         SECTION: "{section}"
     """.strip())
+    print('pass')
     return decision.search_type.lower()
 
 def duck_duck_go_search_node(state: NoteState) -> NoteState:
+    print("DUCK DUCK GO SEARCH NODE:", end='')
     topic = state['topic']
     section = state['sections'][state['current_section_index']]
     response = llm.invoke(f"""
@@ -97,9 +117,11 @@ def duck_duck_go_search_node(state: NoteState) -> NoteState:
     """.strip())
     search_result = ddg_search.invoke(response.content)
     state['sections_content'][state['current_section_index']]['raw_content'] = f"[DucDucGo search result]: {search_result}"
+    print('pass')
     return state
 
 def wikipedia_search_node(state: NoteState) -> NoteState:
+    print("WIKIPEDIA SEARCH NODE:", end='')
     topic = state['topic']
     section = state['sections'][state['current_section_index']]
     response = llm.invoke(f"""
@@ -112,6 +134,7 @@ def wikipedia_search_node(state: NoteState) -> NoteState:
     """.strip())
     search_result = ddg_search.invoke(response.content)
     state['sections_content'][state['current_section_index']]['raw_content'] = f"[Wikipedia search result]: {search_result}"
+    print('pass')
     return state
 
 class SearchQueryResponse(BaseModel):
@@ -119,6 +142,7 @@ class SearchQueryResponse(BaseModel):
     wikipedia_search_query: str = Field(description='Query to search on Wikipedia encyclopedia')
 
 def both_search_node(state: NoteState) -> NoteState:
+    print("BOTH SEARCH NODE:", end='')
     topic = state['topic']
     section = state['sections'][state['current_section_index']]
     structured_llm = llm.with_structured_output(SearchQueryResponse)
@@ -133,9 +157,11 @@ def both_search_node(state: NoteState) -> NoteState:
     ddg_search_result = ddg_search.invoke(queries.duck_duck_go_search_query)
     wkp_search_result = wkp_search.invoke(queries.wikipedia_search_query)
     state['sections_content'][state['current_section_index']]['raw_content'] = f"[DucDucGo search result]: {ddg_search_result}\n\n[Wikipedia search result]: {wkp_search_result}"
+    print('pass')
     return state
 
 def background_idea_generator_node(state: NoteState) -> NoteState:
+    print("BACKGROUND IDEA NODE:", end='')
     topic = state['topic']
     section = state['sections'][state['current_section_index']]
     response = llm.invoke(f"""
@@ -146,9 +172,11 @@ def background_idea_generator_node(state: NoteState) -> NoteState:
         SECTION: "{section}"
     """.strip())
     state['sections_content'][state['current_section_index']]['raw_content'] = f"[Background idea]: {response.content}"
+    print('pass')
     return state
 
 def draft_content_generator_node(state: NoteState) -> NoteState:
+    print("DRAFT CONTENT GENERATOR NODE:", end='')
     topic = state['topic']
     section = state['sections'][state['current_section_index']]
     raw_content = state['sections_content'][state['current_section_index']]['raw_content']
@@ -162,9 +190,11 @@ def draft_content_generator_node(state: NoteState) -> NoteState:
     """.strip())
     state['sections_content'][state['current_section_index']]['title'] = section
     state['sections_content'][state['current_section_index']]['draft_content'] = response.content
+    print('pass')
     return state
     
 def section_human_approval_node(state: NoteState) -> NoteState:
+    print("SECTION HUMAN APPROVAL NODE:", end='')
     topic = state['topic']
     section = state['sections'][state['current_section_index']]
     draft_content = state['sections_content'][state['current_section_index']]['draft_content']
@@ -174,9 +204,11 @@ def section_human_approval_node(state: NoteState) -> NoteState:
     final_content = approval_gui.content
     state['sections_content'][state['current_section_index']]['final_content'] = final_content
     state['current_section_index'] += 1
+    print('pass')
     return state
 
 def final_content_generator_node(state: NoteState) -> NoteState:
+    print("FINAL CONTENT GENERATOR NODE:", end='')
     topic = state['topic']
     current_content = ''
     
@@ -194,9 +226,11 @@ def final_content_generator_node(state: NoteState) -> NoteState:
         CONTENT: "{current_content}"
     """.strip())
     state['draft_note'] = response.content
+    print('pass')
     return state
 
 def final_human_approval_node(state: NoteState) -> NoteState:
+    print("FINAL HUMAN APPROVAL NODE:", end='')
     topic = state['topic']
     draft_note = state['draft_note']
     final_note = ''
@@ -204,13 +238,16 @@ def final_human_approval_node(state: NoteState) -> NoteState:
     approval_gui.run()
     final_note = approval_gui.content
     state['final_note'] = final_note
+    print('pass')
     return state
 
-
+def default_node(state: NoteState) -> NoteState:
+    # print("DEFAULT NODE:")
+    return state
 
 workflow = StateGraph(NoteState)
 PLAN = 'plan'
-IS_FINAL = 'is_final'
+IS_FINAL = 'is_final_loop'
 IS_SEARCH_NEED = 'is_search_need'
 DECIDE_SEARCH_TYPE = 'decide_search_type'
 DDG_SEARCH = 'ddg_search'
@@ -223,9 +260,9 @@ FINAL_CONTENT = 'final_content'
 FINAL_HUMAN_APPROVAL = 'final_human_approval'
 
 workflow.add_node(PLAN, planning_node)
-workflow.add_node(IS_FINAL, is_final_loop)
-workflow.add_node(IS_SEARCH_NEED, is_search_need)
-workflow.add_node(DECIDE_SEARCH_TYPE, decide_search_type)
+workflow.add_node(IS_FINAL, default_node)
+workflow.add_node(IS_SEARCH_NEED, default_node)
+workflow.add_node(DECIDE_SEARCH_TYPE, default_node)
 workflow.add_node(DDG_SEARCH, duck_duck_go_search_node)
 workflow.add_node(WKP_SEARCH, wikipedia_search_node)
 workflow.add_node(BOTH_SEARCH, both_search_node)
@@ -241,8 +278,8 @@ workflow.add_conditional_edges(
     IS_FINAL,
     is_final_loop,
     {
-        'section_content': IS_SEARCH_NEED,
-        'final_content': FINAL_CONTENT
+        'not_final_loop': IS_SEARCH_NEED,
+        'final_loop': FINAL_CONTENT
     }
 )
 workflow.add_conditional_edges(
@@ -274,6 +311,7 @@ workflow.add_edge(FINAL_HUMAN_APPROVAL, END)
 app = workflow.compile()
 
 def run_note_taker(topic:str):
+    print("START:pass")
     initial_state = NoteState({
         'topic': topic,
         'sections': [],
@@ -283,14 +321,5 @@ def run_note_taker(topic:str):
         'final_note': ''
     })
     final_state = app.invoke(initial_state)
+    print("END:pass")
     return final_state
-
-
-from IPython.display import Image
-
-workflow_diagram = Image(
-    app.get_graph().draw_mermaid_png()
-)
-
-with open("workflow.png", "wb") as f:
-    f.write(workflow_diagram.data)
