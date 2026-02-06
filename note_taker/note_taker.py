@@ -1,15 +1,13 @@
 from typing import TypedDict, Annotated, List, Literal, Dict
 from operator import add
-from langchain_ollama import ChatOllama
 from pydantic import BaseModel, Field
 from langchain_core.prompts import PromptTemplate
 from langchain_community.tools import WikipediaQueryRun, DuckDuckGoSearchRun
 from langchain_community.utilities import WikipediaAPIWrapper
 from approval_gui import ApprovalGUI
 from langgraph.graph import StateGraph, START, END
+from config import llm
 
-llm = ChatOllama(model='smollm2:135m')
-# llm = ChatOllama(model='gemma3:4b') #(model='smollm2:135m')
 wkp_search = WikipediaQueryRun(api_wrapper=WikipediaAPIWrapper())
 ddg_search = DuckDuckGoSearchRun()
 
@@ -60,10 +58,10 @@ def is_final_loop(state: NoteState) -> Literal['final_loop', 'not_final_loop']:
     current_section_index = state['current_section_index']
 
     print('pass')
-    if current_section_index < total_section - 1:
-        return 'not_final_loop'
-    else:
+    if current_section_index >= total_section:
         return 'final_loop'
+    else:
+        return 'not_final_loop'
 
 class IsSearchNeedDecisionResponse(BaseModel):
     is_search_need: bool = Field(description='is searching is necessary')
@@ -132,7 +130,7 @@ def wikipedia_search_node(state: NoteState) -> NoteState:
         TOPIC: "{topic}"
         SECTION: "{section}"
     """.strip())
-    search_result = ddg_search.invoke(response.content)
+    search_result = wkp_search.invoke(response.content)
     state['sections_content'][state['current_section_index']]['raw_content'] = f"[Wikipedia search result]: {search_result}"
     print('pass')
     return state
@@ -197,7 +195,7 @@ def section_human_approval_node(state: NoteState) -> NoteState:
     topic = state['topic']
     section = state['sections'][state['current_section_index']]
     draft_content = state['sections_content'][state['current_section_index']]['draft_content']
-    final_content = ''
+    final_content = draft_content
     approval_gui = ApprovalGUI(topic=topic, content=draft_content, section=section)
     approval_gui.run()
     final_content = approval_gui.content
@@ -232,11 +230,24 @@ def final_human_approval_node(state: NoteState) -> NoteState:
     print("FINAL HUMAN APPROVAL NODE:", end='')
     topic = state['topic']
     draft_note = state['draft_note']
-    final_note = ''
+    final_note = draft_note
     approval_gui = ApprovalGUI(topic=topic, content=draft_note)
     approval_gui.run()
     final_note = approval_gui.content
     state['final_note'] = final_note
+    print('pass')
+    return state
+
+def improve_markdown_node(state: NoteState) -> NoteState:
+    print("IMPROVE MARKDOWN NODE:", end='')
+    final_note = state['final_note']
+    response = llm.invoke(f"""
+        Improve the following markdown text:
+        <text>
+        {final_note}
+        </text>
+    """.strip())
+    state['final_note'] = response.content
     print('pass')
     return state
 
@@ -257,6 +268,7 @@ DRAFT_CONTENT = 'draft_content'
 SECTION_HUMAN_APPROVAL = 'section_human_approval'
 FINAL_CONTENT = 'final_content'
 FINAL_HUMAN_APPROVAL = 'final_human_approval'
+IMPROVE_MARKDOWN = 'improve_markdown'
 
 workflow.add_node(PLAN, planning_node)
 workflow.add_node(IS_FINAL, default_node)
@@ -270,6 +282,7 @@ workflow.add_node(DRAFT_CONTENT, draft_content_generator_node)
 workflow.add_node(SECTION_HUMAN_APPROVAL, section_human_approval_node)
 workflow.add_node(FINAL_CONTENT, final_content_generator_node)
 workflow.add_node(FINAL_HUMAN_APPROVAL, final_human_approval_node)
+workflow.add_node(IMPROVE_MARKDOWN, improve_markdown_node)
 
 workflow.add_edge(START, PLAN)
 workflow.add_edge(PLAN, IS_FINAL)
@@ -305,7 +318,8 @@ workflow.add_edge(BOTH_SEARCH, DRAFT_CONTENT)
 workflow.add_edge(DRAFT_CONTENT, SECTION_HUMAN_APPROVAL)
 workflow.add_edge(SECTION_HUMAN_APPROVAL, IS_FINAL)
 workflow.add_edge(FINAL_CONTENT, FINAL_HUMAN_APPROVAL)
-workflow.add_edge(FINAL_HUMAN_APPROVAL, END)
+workflow.add_edge(FINAL_HUMAN_APPROVAL, IMPROVE_MARKDOWN)
+workflow.add_edge(IMPROVE_MARKDOWN, END)
 
 app = workflow.compile()
 
@@ -321,4 +335,5 @@ def run_note_taker(topic:str):
     })
     final_state = app.invoke(initial_state)
     print("END:pass")
+    print(final_state['final_note'])
     return final_state
