@@ -67,7 +67,7 @@ class ApprovalGUI:
 
     def approve_action(self):
         messagebox.showinfo("Approved", f"Approved: \n\n{self.content[:250]}...")
-        self.root.destroy()
+        self.root.quit()
 
     def improve_action(self):
         feedback = self.text_area.get("1.0", tk.END).strip()
