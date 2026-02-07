@@ -5,6 +5,7 @@ import uuid
 
 # llm = ChatOllama(model='smollm2:135m')
 # llm = ChatOllama(model='gemma3:4b')
+# llm = ChatOllama(model='llama3.1:8b')
 llm = ChatOllama(model='llama3.2:3b')
 
 def get_config():

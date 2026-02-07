@@ -1,9 +1,11 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from datetime import datetime
-from note_taker import app, run_note_taker
+from note_graph import note_app, run_note_graph, NoteState
+from section_graph import section_app
 from IPython.display import Image as IP_Image
 from PIL import ImageTk, Image as PIL_Image
+import asyncio
 import io
 
 
@@ -17,7 +19,7 @@ class NoteTakerAgentGUI:
         container = tk.Frame(root, padx=30, pady=30)
         container.pack(fill="both", expand=True)
 
-        topic_label = tk.Label(container, text="Topic Name:")
+        topic_label = tk.Label(container, text="Topic Name")
         topic_label.pack(anchor="w", pady=(0, 5))
 
         self.topic_entry = tk.Entry(container)
@@ -51,7 +53,7 @@ class NoteTakerAgentGUI:
         discard_button.pack(side="left")
 
 
-        note_taker_workflow_diagram = IP_Image(app.get_graph().draw_mermaid_png())
+        note_taker_workflow_diagram = IP_Image(section_app.get_graph().draw_mermaid_png())
         image_bytes = note_taker_workflow_diagram.data
         pil_image = PIL_Image.open(io.BytesIO(image_bytes))
         tk_image = ImageTk.PhotoImage(pil_image)
@@ -67,8 +69,8 @@ class NoteTakerAgentGUI:
             return
 
         messagebox.showinfo("Acknowledgement", f"Generating Content: \n\n{topic}")
-        content = run_note_taker(topic)
-        self.content = content['final_note']
+        content = asyncio.run(run_note_graph(NoteState(topic=topic)))
+        self.content = content.improved_note
         messagebox.showinfo("Congratulation", f"Generate: \n\n{self.content[:250]}...")
 
     def save_content(self):

@@ -20,7 +20,7 @@ class PlanResponse(BaseModel):
     titles: List[str] = Field(description='List of related titles')
 
 async def planning_node(state: NoteState) -> NoteState:
-    print("PLANING NODE:", end='')
+    print("PLANING NODE")
     structured_llm = llm.with_structured_output(PlanResponse)
     response: PlanResponse = await structured_llm.ainvoke(f"""
         You are expert content generator.
@@ -38,7 +38,7 @@ async def planning_node(state: NoteState) -> NoteState:
     return state
 
 async def section_content_generator_node(state: NoteState) -> NoteState:
-    print("SECTION CONTENT GENERATOR NODE:", end='')
+    print("SECTION CONTENT GENERATOR NODE")
     tasks = [
         asyncio.create_task(
             run_section_graph(section)
@@ -50,7 +50,7 @@ async def section_content_generator_node(state: NoteState) -> NoteState:
     return state
 
 async def draft_note_generator_node(state: NoteState) -> NoteState:
-    print("FINAL CONTENT GENERATOR NODE:", end='')
+    print("FINAL CONTENT GENERATOR NODE")
     current_content = ''
     
     for i, section in enumerate(state.sections, start=1):
@@ -70,7 +70,7 @@ async def draft_note_generator_node(state: NoteState) -> NoteState:
     return state
 
 async def final_human_approval_node(state: NoteState) -> NoteState:
-    print("FINAL HUMAN APPROVAL NODE:", end='')
+    print("FINAL HUMAN APPROVAL NODE")
     final_note = interrupt({
         'interrupt_state': state
     })
@@ -78,7 +78,7 @@ async def final_human_approval_node(state: NoteState) -> NoteState:
     return state
 
 async def improve_markdown_node(state: NoteState) -> NoteState:
-    print("IMPROVE MARKDOWN NODE:", end='')
+    print("IMPROVE MARKDOWN NODE")
     response = await llm.ainvoke(f"""
         Improve the following markdown text:
         <text>

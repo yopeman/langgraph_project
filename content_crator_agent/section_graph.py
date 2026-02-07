@@ -24,7 +24,7 @@ class IsSearchNeedDecisionResponse(BaseModel):
     is_search_need: bool = Field(description='is searching is necessary or not?')
 
 async def is_search_need(state: SectionState) -> Literal['need_search', 'not_need_search']:
-    print("IS SEARCH NEED NODE:", end='')
+    print("IS SEARCH NEED NODE")
     structured_llm = llm.with_structured_output(IsSearchNeedDecisionResponse)
     decision: IsSearchNeedDecisionResponse = await structured_llm.ainvoke(f"""
         You are expert content generator.
@@ -42,7 +42,7 @@ class SearchTypeDecisionResponse(BaseModel):
     search_type: Literal['duck_duck_go', 'wikipedia', 'both'] = Field(description='Best search tool')
 
 async def decide_search_type(state: SectionState) -> Literal['duck_duck_go', 'wikipedia', 'both']:
-    print("DECIDE SEARCH TYPE NODE:", end='')
+    print("DECIDE SEARCH TYPE NODE")
     structured_llm = llm.with_structured_output(SearchTypeDecisionResponse)
     decision: SearchTypeDecisionResponse = await structured_llm.ainvoke(f"""
         You are expert content generator.
@@ -53,7 +53,7 @@ async def decide_search_type(state: SectionState) -> Literal['duck_duck_go', 'wi
     return decision.search_type.lower()
 
 async def duck_duck_go_search_node(state: SectionState) -> SectionState:
-    print("DUCK DUCK GO SEARCH NODE:", end='')
+    print("DUCK DUCK GO SEARCH NODE")
     response = await llm.ainvoke(f"""
         You are expert content generator.
         for the following general topic and its specific title, 
@@ -67,7 +67,7 @@ async def duck_duck_go_search_node(state: SectionState) -> SectionState:
     return state
 
 async def wikipedia_search_node(state: SectionState) -> SectionState:
-    print("WIKIPEDIA SEARCH NODE:", end='')
+    print("WIKIPEDIA SEARCH NODE")
     response = await llm.ainvoke(f"""
         You are expert content generator.
         for the following general topic and its specific title, 
@@ -85,7 +85,7 @@ class SearchQueryResponse(BaseModel):
     wikipedia_search_query: str = Field(description='Query to search on Wikipedia encyclopedia')
 
 async def both_search_node(state: SectionState) -> SectionState:
-    print("BOTH SEARCH NODE:", end='')
+    print("BOTH SEARCH NODE")
     structured_llm = llm.with_structured_output(SearchQueryResponse)
     queries: SearchQueryResponse = await structured_llm.ainvoke(f"""
         You are expert content generator.
@@ -110,7 +110,7 @@ async def both_search_node(state: SectionState) -> SectionState:
     return state
 
 async def background_idea_generator_node(state: SectionState) -> SectionState:
-    print("BACKGROUND IDEA NODE:", end='')
+    print("BACKGROUND IDEA NODE")
     response = await llm.ainvoke(f"""
         You are expert content generator.
         for the following general topic and its specific title, 
@@ -122,7 +122,7 @@ async def background_idea_generator_node(state: SectionState) -> SectionState:
     return state
 
 async def draft_content_generator_node(state: SectionState) -> SectionState:
-    print("DRAFT CONTENT GENERATOR NODE:", end='')
+    print("DRAFT CONTENT GENERATOR NODE")
     response = await llm.ainvoke(f"""
         You are expert content generator.
         for the following general topic, its specific title and raw content, 
@@ -135,7 +135,7 @@ async def draft_content_generator_node(state: SectionState) -> SectionState:
     return state
 
 async def section_human_approval_node(state: SectionState) -> SectionState:
-    print("SECTION HUMAN APPROVAL NODE:", end='')
+    print("SECTION HUMAN APPROVAL NODE")
     final_content = interrupt({
         'interrupt_state': state
     })
@@ -143,7 +143,7 @@ async def section_human_approval_node(state: SectionState) -> SectionState:
     return state
 
 async def default_node(state: SectionState) -> SectionState:
-    # print("DEFAULT NODE:")
+    # print("DEFAULT NODE")
     return state
 
 IS_SEARCH_NEED = 'is_search_need'
