@@ -59,7 +59,7 @@ class NoteTakerAgentGUI:
         pil_image = PIL_Image.open(io.BytesIO(image_bytes))
         tk_image = ImageTk.PhotoImage(pil_image)
         img_label = tk.Label(container, image=tk_image)
-        img_label.pack(anchor='center')
+        # img_label.pack(anchor='center')
 
         self.root.mainloop()
 
