@@ -5,18 +5,19 @@ from note_graph import note_app, run_note_graph, NoteState
 from section_graph import section_app
 from IPython.display import Image as IP_Image
 from PIL import ImageTk, Image as PIL_Image
+import threading
 import asyncio
 import io
 
 
 class NoteTakerAgentGUI:
     def __init__(self):
-        root = tk.Tk()
-        root.title("Content Generator Agent")
+        self.root = tk.Tk()
+        self.root.title("Content Generator Agent")
         # root.geometry("600x450")
         self.content = None
 
-        container = tk.Frame(root, padx=30, pady=30)
+        container = tk.Frame(self.root, padx=30, pady=30)
         container.pack(fill="both", expand=True)
 
         topic_label = tk.Label(container, text="Topic Name")
@@ -60,18 +61,23 @@ class NoteTakerAgentGUI:
         img_label = tk.Label(container, image=tk_image)
         img_label.pack(anchor='center')
 
-        root.mainloop()
+        self.root.mainloop()
 
     def generate_content(self):
         topic = self.topic_entry.get().strip()
         if not topic:
             messagebox.showwarning("Missing Topic", "Please enter a topic name.")
             return
-
-        messagebox.showinfo("Acknowledgement", f"Generating Content: \n\n{topic}")
-        content = asyncio.run(run_note_graph(NoteState(topic=topic)))
-        self.content = content.improved_note
-        messagebox.showinfo("Congratulation", f"Generate: \n\n{self.content[:250]}...")
+        
+        def run_async_task():
+            try:
+                self.root.after(0, lambda: messagebox.showinfo("Acknowledgement", f"Generating Content: \n\n{topic}"))
+                content = asyncio.run(run_note_graph(NoteState(topic=topic)))
+                self.content = content.improved_note
+                self.root.after(0, lambda: messagebox.showinfo("Success", f"Generate: \n\n{self.content[:250]}..."))
+            except Exception as e:
+                self.root.after(0, lambda: messagebox.showerror("Error", str(e)))
+        threading.Thread(target=run_async_task, daemon=True).start()
 
     def save_content(self):
         content = self.content
