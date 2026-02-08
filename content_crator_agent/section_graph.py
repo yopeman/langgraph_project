@@ -192,7 +192,7 @@ section_graph.add_edge(SECTION_HUMAN_APPROVAL, END)
 
 section_app = section_graph.compile(checkpointer=MemorySaver())
 async def run_section_graph(state: SectionState) -> SectionState:
-    print("START SECTION")
+    print("START SECTION, Title:", state.title)
     config = get_config()
     result = await section_app.ainvoke(state, config)
     interrupt_state: SectionState = result['__interrupt__'][0].value['interrupt_state']

@@ -110,7 +110,7 @@ note_graph.add_edge(IMPROVE_MARKDOWN, END)
 
 note_app = note_graph.compile(checkpointer=MemorySaver())
 async def run_note_graph(state: NoteState):
-    print("START NOTE")
+    print("START NOTE, Topic:", state.topic)
     config = get_config()
     result = await note_app.ainvoke(state, config)
     interrupt_state: NoteState = result['__interrupt__'][0].value['interrupt_state']
